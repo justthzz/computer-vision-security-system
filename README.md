@@ -6,7 +6,7 @@
 
 ## 🚀 Project Overview
 
-This is a **comprehensive computer vision security system** designed to demonstrate advanced AI/ML engineering skills for technical interviews. The system showcases multiple detection algorithms, real-time performance monitoring, data analytics, machine learning integration, and professional software architecture.
+This is a **comprehensive computer vision security system** designed to demonstrate advanced AI/ML engineering skills. The system showcases multiple detection algorithms, real-time performance monitoring, data analytics, machine learning integration, and professional software architecture.
 
 ### 🎯 **What Makes This Project Special**
 
