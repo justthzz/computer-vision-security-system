@@ -1,0 +1,49 @@
+{
+    "video_source": 0,
+    "input_resolution": [
+        640,
+        480
+    ],
+    "output_resolution": [
+        640,
+        480
+    ],
+    "detectors": {
+        "motion": {
+            "enabled": true,
+            "algorithm": "MOG2",
+            "confidence_threshold": 0.5,
+            "min_contour_area": 1000
+        },
+        "person": {
+            "enabled": true,
+            "model_type": "YOLO",
+            "confidence_threshold": 0.3,
+            "input_size": [
+                416,
+                416
+            ]
+        }
+    },
+    "tracking": {
+        "enabled": true,
+        "algorithm": "CSRT",
+        "max_disappeared": 30.0
+    },
+    "performance": {
+        "monitoring_enabled": true,
+        "update_interval": 1.0,
+        "max_history": 1000
+    },
+    "analytics": {
+        "enabled": true,
+        "dashboard_enabled": false,
+        "export_interval": 300
+    },
+    "output": {
+        "save_detections": true,
+        "save_videos": true,
+        "output_directory": "advanced_detections",
+        "log_level": "INFO"
+    }
+}

@@ -1,0 +1,35 @@
+# Advanced Computer Vision Security System Requirements
+# Core computer vision and image processing
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+numpy>=1.21.0
+Pillow>=9.0.0
+
+# Data analysis and visualization
+matplotlib>=3.5.0
+seaborn>=0.11.0
+pandas>=1.3.0
+
+# GUI and dashboard
+# tkinter is built into Python, no need to install
+
+# Performance monitoring
+psutil>=5.8.0
+
+# Machine learning (optional, for advanced features)
+scikit-learn>=1.0.0
+tensorflow>=2.8.0  # Optional, for custom models
+torch>=1.11.0      # Optional, for PyTorch models
+
+# Data serialization
+json5>=0.9.0
+
+# Development and testing
+pytest>=6.0.0
+pytest-cov>=3.0.0
+black>=22.0.0
+flake8>=4.0.0
+
+# Documentation
+sphinx>=4.0.0
+sphinx-rtd-theme>=1.0.0
