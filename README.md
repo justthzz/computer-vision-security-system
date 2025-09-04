@@ -302,26 +302,6 @@ computer-vision/
 7. **Deep Learning**: Custom CNN models
 8. **Real-time Streaming**: WebRTC integration
 
-## 💡 Interview Questions to Expect
-
-### Technical Questions
-- "How would you optimize this system for a Raspberry Pi?"
-- "What would you do if the detection accuracy was too low?"
-- "How would you scale this to handle 100 cameras?"
-- "What metrics would you use to evaluate system performance?"
-
-### System Design Questions
-- "How would you design this for a production environment?"
-- "What would you do to ensure system reliability?"
-- "How would you handle data privacy and security?"
-- "What would you do if the system started missing detections?"
-
-### Machine Learning Questions
-- "How would you improve the person detection accuracy?"
-- "What would you do to reduce false positives?"
-- "How would you handle different lighting conditions?"
-- "What would you do to detect other object types?"
-
 ## 🎉 Conclusion
 
 This project demonstrates comprehensive computer vision, machine learning, and software engineering skills. The modular architecture, performance optimization, and analytics capabilities make it an excellent portfolio piece for technical interviews.
