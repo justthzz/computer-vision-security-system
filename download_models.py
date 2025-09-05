@@ -42,19 +42,45 @@ def download_yolo_models():
     # Create models directory
     os.makedirs("models", exist_ok=True)
     
-    # YOLO v3 files
+    # YOLO v3 files with alternative sources
     yolo_files = {
-        "yolov3.weights": "https://pjreddie.com/media/files/yolov3.weights",
-        "yolov3.cfg": "https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/yolov3.cfg",
-        "coco.names": "https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names"
+        "yolov3.weights": [
+            "https://pjreddie.com/media/files/yolov3.weights",
+            "https://github.com/AlexeyAB/darknet/releases/download/yolov3/yolov3.weights"
+        ],
+        "yolov3.cfg": [
+            "https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/yolov3.cfg",
+            "https://raw.githubusercontent.com/AlexeyAB/darknet/master/cfg/yolov3.cfg"
+        ],
+        "coco.names": [
+            "https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names",
+            "https://raw.githubusercontent.com/AlexeyAB/darknet/master/data/coco.names"
+        ]
     }
     
-    for filename, url in yolo_files.items():
+    for filename, urls in yolo_files.items():
         if not os.path.exists(filename):
-            try:
-                download_file(url, filename)
-            except Exception as e:
-                print(f"Failed to download {filename}: {e}")
+            success = False
+            for url in urls:
+                try:
+                    print(f"Trying to download {filename} from {url}...")
+                    download_file(url, filename)
+                    # Verify file size for weights (should be ~248MB)
+                    if filename == "yolov3.weights" and os.path.getsize(filename) < 100000000:  # Less than 100MB
+                        print(f"Downloaded file too small, trying next source...")
+                        os.remove(filename)
+                        continue
+                    success = True
+                    break
+                except Exception as e:
+                    print(f"Failed to download from {url}: {e}")
+                    continue
+            
+            if not success:
+                print(f"❌ Failed to download {filename} from all sources")
+                print(f"Please download manually from: https://github.com/AlexeyAB/darknet/releases")
+            else:
+                print(f"✅ Successfully downloaded {filename}")
         else:
             print(f"{filename} already exists, skipping...")
     

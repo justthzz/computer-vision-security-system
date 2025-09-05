@@ -20,6 +20,8 @@ psutil>=5.8.0
 scikit-learn>=1.0.0
 tensorflow>=2.8.0  # Optional, for custom models
 torch>=1.11.0      # Optional, for PyTorch models
+ultralytics>=8.0.0  # YOLOv8 for modern object detection
+torchvision>=0.9.0  # Required for YOLOv8
 
 # Data serialization
 json5>=0.9.0

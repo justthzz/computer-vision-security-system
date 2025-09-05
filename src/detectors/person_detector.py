@@ -10,11 +10,19 @@ import time
 import os
 from .base_detector import BaseDetector, DetectionResult
 
+# Import YOLOv8
+try:
+    from ultralytics import YOLO
+    YOLO_AVAILABLE = True
+except ImportError:
+    YOLO_AVAILABLE = False
+    print("YOLOv8 not available. Install with: pip install ultralytics")
+
 class PersonDetector(BaseDetector):
     """Advanced person detection with multiple model support."""
     
     def __init__(self, confidence_threshold: float = 0.5, 
-                 model_type: str = 'YOLO',
+                 model_type: str = 'YOLOv8',
                  input_size: Tuple[int, int] = (416, 416)):
         super().__init__("PersonDetector", confidence_threshold)
         self.model_type = model_type
@@ -24,15 +32,23 @@ class PersonDetector(BaseDetector):
         self.person_class_id = 0
         self.output_layers = []
         self.fallback_mode = False  # Use simple detection when YOLO fails
+        self.yolo_model = None  # For YOLOv8
         
     def initialize(self) -> bool:
         """Initialize the person detection model."""
         try:
-            if self.model_type == 'YOLO':
+            if self.model_type == 'YOLOv8':
+                if self._initialize_yolov8():
+                    return True
+                else:
+                    print("YOLOv8 initialization failed, falling back to simple detection...")
+                    self.fallback_mode = True
+                    return True
+            elif self.model_type == 'YOLO':
                 if self._initialize_yolo():
                     return True
                 else:
-                    print("YOLO initialization failed, falling back to simple detection...")
+                    print("YOLO v3 initialization failed, falling back to simple detection...")
                     self.fallback_mode = True
                     return True
             elif self.model_type == 'MobileNet':
@@ -46,6 +62,22 @@ class PersonDetector(BaseDetector):
             print("Falling back to simple detection...")
             self.fallback_mode = True
             return True
+    
+    def _initialize_yolov8(self) -> bool:
+        """Initialize YOLOv8 model."""
+        if not YOLO_AVAILABLE:
+            print("YOLOv8 not available. Install with: pip install ultralytics")
+            return False
+        
+        try:
+            # Load YOLOv8 model (will download automatically if not present)
+            print("Loading YOLOv8 model...")
+            self.yolo_model = YOLO('yolov8n.pt')  # nano version for speed
+            print("✅ YOLOv8 model loaded successfully!")
+            return True
+        except Exception as e:
+            print(f"Failed to load YOLOv8 model: {e}")
+            return False
     
     def _initialize_yolo(self) -> bool:
         """Initialize YOLO model."""
@@ -105,10 +137,11 @@ class PersonDetector(BaseDetector):
         if self.fallback_mode:
             detections = self._detect_fallback(frame)
         else:
-            # Preprocess frame
-            frame = self.preprocess_frame(frame)
-            
-            if self.model_type == 'YOLO':
+            if self.model_type == 'YOLOv8':
+                detections = self._detect_yolov8(frame)
+            elif self.model_type == 'YOLO':
+                # Preprocess frame for YOLO v3
+                frame = self.preprocess_frame(frame)
                 detections = self._detect_yolo(frame)
             else:
                 detections = []
@@ -118,6 +151,44 @@ class PersonDetector(BaseDetector):
         self.total_processing_time += time.time() - start_time
         
         return self.postprocess_detections(detections)
+    
+    def _detect_yolov8(self, frame: np.ndarray) -> List[DetectionResult]:
+        """Detect persons using YOLOv8."""
+        detections = []
+        
+        try:
+            # Run YOLOv8 inference
+            results = self.yolo_model(frame, conf=self.confidence_threshold, verbose=False)
+            
+            # Process results
+            for result in results:
+                boxes = result.boxes
+                if boxes is not None:
+                    for box in boxes:
+                        # Get class ID and confidence
+                        class_id = int(box.cls[0])
+                        confidence = float(box.conf[0])
+                        
+                        # Check if it's a person (class 0 in COCO dataset)
+                        if class_id == 0:  # person class
+                            # Get bounding box coordinates
+                            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                            x, y, w, h = int(x1), int(y1), int(x2 - x1), int(y2 - y1)
+                            
+                            # Create detection result
+                            detection = DetectionResult(
+                                class_name="person",
+                                confidence=confidence,
+                                bbox=(x, y, w, h),
+                                timestamp=time.time(),
+                                method="YOLOv8"
+                            )
+                            detections.append(detection)
+            
+        except Exception as e:
+            print(f"Error in YOLOv8 detection: {e}")
+        
+        return detections
     
     def _detect_yolo(self, frame: np.ndarray) -> List[DetectionResult]:
         """Detect persons using YOLO."""
