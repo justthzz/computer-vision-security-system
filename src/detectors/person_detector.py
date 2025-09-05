@@ -143,6 +143,16 @@ class PersonDetector(BaseDetector):
     
     def preprocess_frame(self, frame: np.ndarray) -> np.ndarray:
         """Preprocess frame for person detection."""
-        # Resize frame to input size
-        frame = cv2.resize(frame, self.input_size)
+        # Skip resize to avoid OpenCV errors - use original frame size
+        # This is a workaround for persistent OpenCV resize issues
+        if frame is None or not isinstance(frame, np.ndarray) or frame.size == 0:
+            self.logger.warning("Invalid frame in person detector, returning original")
+            return frame
+        
+        if len(frame.shape) < 2 or frame.shape[0] == 0 or frame.shape[1] == 0:
+            self.logger.warning(f"Invalid frame dimensions in person detector: {frame.shape}")
+            return frame
+        
+        # Return original frame without resize to avoid OpenCV errors
+        self.logger.debug(f"Person detector using original frame size: {frame.shape}")
         return frame

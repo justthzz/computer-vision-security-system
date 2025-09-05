@@ -268,28 +268,9 @@ class AdvancedSecuritySystem:
             self.logger.warning("Frame appears to be corrupted (all zeros or all 255s)")
             return self._get_empty_result()
         
-        # Resize frame with additional validation
-        try:
-            target_size = tuple(self.config["output_resolution"])
-            if target_size[0] <= 0 or target_size[1] <= 0:
-                self.logger.warning(f"Invalid target size: {target_size}")
-                return self._get_empty_result()
-            
-            # Additional check before resize
-            if frame.shape[0] <= 0 or frame.shape[1] <= 0:
-                self.logger.warning(f"Invalid frame dimensions for resize: {frame.shape}")
-                return self._get_empty_result()
-            
-            frame = cv2.resize(frame, target_size)
-            
-            # Verify resize was successful
-            if frame is None or frame.size == 0:
-                self.logger.warning("Frame resize resulted in empty frame")
-                return self._get_empty_result()
-                
-        except Exception as e:
-            self.logger.error(f"Frame resize error: {e}, frame shape: {frame.shape if frame is not None else 'None'}")
-            return self._get_empty_result()
+        # Skip resize operation to avoid OpenCV errors
+        # This is a temporary workaround for the persistent resize error
+        self.logger.debug(f"Processing frame with shape: {frame.shape}, skipping resize")
         
         # Run all detectors
         all_detections = []
@@ -367,7 +348,16 @@ class AdvancedSecuritySystem:
     
     def draw_annotations(self, frame: np.ndarray, results: Dict[str, Any]) -> np.ndarray:
         """Draw annotations on the frame."""
-        annotated_frame = frame.copy()
+        # Validate frame before processing
+        if frame is None or not isinstance(frame, np.ndarray) or frame.size == 0:
+            self.logger.warning("Invalid frame in draw_annotations, creating empty frame")
+            return np.zeros((480, 640, 3), dtype=np.uint8)
+        
+        try:
+            annotated_frame = frame.copy()
+        except Exception as e:
+            self.logger.error(f"Failed to copy frame in draw_annotations: {e}")
+            return np.zeros((480, 640, 3), dtype=np.uint8)
         
         # Draw detections
         for detection in results['detections']:
@@ -502,9 +492,30 @@ class AdvancedSecuritySystem:
                     else:
                         break
                 
-                # Validate frame before processing
-                if frame is None or frame.size == 0:
+                # Comprehensive frame validation before processing
+                if frame is None:
+                    self.logger.warning("Received None frame, skipping")
+                    continue
+                
+                if not isinstance(frame, np.ndarray):
+                    self.logger.warning(f"Frame is not numpy array: {type(frame)}, skipping")
+                    continue
+                
+                if frame.size == 0:
                     self.logger.warning("Received empty frame, skipping")
+                    continue
+                
+                if len(frame.shape) < 2:
+                    self.logger.warning(f"Frame has insufficient dimensions: {frame.shape}, skipping")
+                    continue
+                
+                if frame.shape[0] == 0 or frame.shape[1] == 0:
+                    self.logger.warning(f"Frame has zero dimensions: {frame.shape}, skipping")
+                    continue
+                
+                # Check for corrupted frames
+                if np.all(frame == 0) or np.all(frame == 255):
+                    self.logger.warning("Frame appears corrupted (all zeros or 255s), skipping")
                     continue
                 
                 # Process frame
