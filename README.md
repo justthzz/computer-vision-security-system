@@ -54,7 +54,7 @@ Advanced Security System
 - **Use Cases**: Motion detection, surveillance, traffic monitoring
 
 #### **Object Detection**
-- **YOLO v3**: Real-time object detection with 80+ object classes
+- **YOLO v8**: Real-time object detection with 80+ object classes
 - **Confidence Thresholding**: Adaptive sensitivity control
 - **Non-Maximum Suppression**: Overlapping detection removal
 - **Use Cases**: Person detection, security monitoring, crowd analysis
