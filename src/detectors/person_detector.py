@@ -23,12 +23,18 @@ class PersonDetector(BaseDetector):
         self.classes = []
         self.person_class_id = 0
         self.output_layers = []
+        self.fallback_mode = False  # Use simple detection when YOLO fails
         
     def initialize(self) -> bool:
         """Initialize the person detection model."""
         try:
             if self.model_type == 'YOLO':
-                return self._initialize_yolo()
+                if self._initialize_yolo():
+                    return True
+                else:
+                    print("YOLO initialization failed, falling back to simple detection...")
+                    self.fallback_mode = True
+                    return True
             elif self.model_type == 'MobileNet':
                 return self._initialize_mobilenet()
             elif self.model_type == 'OpenPose':
@@ -37,16 +43,25 @@ class PersonDetector(BaseDetector):
                 raise ValueError(f"Unknown model type: {self.model_type}")
         except Exception as e:
             print(f"Failed to initialize PersonDetector: {e}")
-            return False
+            print("Falling back to simple detection...")
+            self.fallback_mode = True
+            return True
     
     def _initialize_yolo(self) -> bool:
         """Initialize YOLO model."""
-        weights_path = "models/yolov3.weights"
-        config_path = "models/yolov3.cfg"
-        names_path = "models/coco.names"
+        weights_path = "yolov3.weights"
+        config_path = "yolov3.cfg"
+        names_path = "coco.names"
         
         if not all(os.path.exists(p) for p in [weights_path, config_path, names_path]):
             print("YOLO model files not found. Please run download_models.py")
+            return False
+        
+        # Check if weights file is valid (should be ~248MB for YOLO v3)
+        if os.path.getsize(weights_path) < 1000000:  # Less than 1MB indicates corrupted download
+            print(f"YOLO weights file appears corrupted (size: {os.path.getsize(weights_path)} bytes)")
+            print("Please download YOLO v3 weights manually from: https://pjreddie.com/darknet/yolo/")
+            print("Or use a different detection method.")
             return False
         
         # Load YOLO model
@@ -86,13 +101,17 @@ class PersonDetector(BaseDetector):
         
         start_time = time.time()
         
-        # Preprocess frame
-        frame = self.preprocess_frame(frame)
-        
-        if self.model_type == 'YOLO':
-            detections = self._detect_yolo(frame)
+        # Use fallback detection if YOLO failed
+        if self.fallback_mode:
+            detections = self._detect_fallback(frame)
         else:
-            detections = []
+            # Preprocess frame
+            frame = self.preprocess_frame(frame)
+            
+            if self.model_type == 'YOLO':
+                detections = self._detect_yolo(frame)
+            else:
+                detections = []
         
         # Update metrics
         self.detection_count += 1
@@ -156,3 +175,46 @@ class PersonDetector(BaseDetector):
         # Return original frame without resize to avoid OpenCV errors
         self.logger.debug(f"Person detector using original frame size: {frame.shape}")
         return frame
+    
+    def _detect_fallback(self, frame: np.ndarray) -> List[DetectionResult]:
+        """Fallback detection using simple motion-based detection."""
+        detections = []
+        
+        try:
+            # Simple motion detection as fallback
+            # Convert to grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # Apply Gaussian blur
+            blurred = cv2.GaussianBlur(gray, (21, 21), 0)
+            
+            # Create a simple background subtractor
+            if not hasattr(self, 'bg_subtractor'):
+                self.bg_subtractor = cv2.createBackgroundSubtractorMOG2()
+            
+            # Apply background subtraction
+            fg_mask = self.bg_subtractor.apply(blurred)
+            
+            # Find contours
+            contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            # Filter contours by area (person-like size)
+            for contour in contours:
+                area = cv2.contourArea(contour)
+                if area > 1000:  # Minimum area for person detection
+                    x, y, w, h = cv2.boundingRect(contour)
+                    
+                    # Create detection result
+                    detection = DetectionResult(
+                        class_name="person",
+                        confidence=0.7,  # Fixed confidence for fallback
+                        bbox=(x, y, w, h),
+                        timestamp=time.time(),
+                        method="fallback_motion"
+                    )
+                    detections.append(detection)
+            
+        except Exception as e:
+            print(f"Error in fallback detection: {e}")
+        
+        return detections
