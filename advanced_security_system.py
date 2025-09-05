@@ -226,63 +226,70 @@ class AdvancedSecuritySystem:
             self.logger.error(f"❌ Failed to initialize video capture: {e}")
             raise
     
+    def _get_empty_result(self) -> Dict[str, Any]:
+        """Return empty result structure for error cases."""
+        return {
+            'detections': [],
+            'tracked_objects': [],
+            'performance': {
+                'fps': 0,
+                'frame_time': 0,
+                'detection_times': {}
+            }
+        }
+    
     def process_frame(self, frame: np.ndarray) -> Dict[str, Any]:
         """Process a single frame with all detection methods."""
         start_time = time.time()
         
-        # Check if frame is valid
-        if frame is None or frame.size == 0:
+        # Comprehensive frame validation
+        if frame is None:
+            self.logger.warning("Frame is None, skipping processing")
+            return self._get_empty_result()
+        
+        if not isinstance(frame, np.ndarray):
+            self.logger.warning(f"Frame is not a numpy array: {type(frame)}")
+            return self._get_empty_result()
+        
+        if frame.size == 0:
             self.logger.warning("Empty frame received, skipping processing")
-            return {
-                'detections': [],
-                'tracked_objects': [],
-                'performance': {
-                    'fps': 0,
-                    'frame_time': 0,
-                    'detection_times': {}
-                }
-            }
+            return self._get_empty_result()
         
-        # Check frame dimensions
-        if len(frame.shape) < 2 or frame.shape[0] == 0 or frame.shape[1] == 0:
-            self.logger.warning(f"Invalid frame dimensions: {frame.shape if frame is not None else 'None'}")
-            return {
-                'detections': [],
-                'tracked_objects': [],
-                'performance': {
-                    'fps': 0,
-                    'frame_time': 0,
-                    'detection_times': {}
-                }
-            }
+        if len(frame.shape) < 2:
+            self.logger.warning(f"Frame has insufficient dimensions: {frame.shape}")
+            return self._get_empty_result()
         
-        # Resize frame
+        if frame.shape[0] == 0 or frame.shape[1] == 0:
+            self.logger.warning(f"Frame has zero dimensions: {frame.shape}")
+            return self._get_empty_result()
+        
+        # Check for corrupted frames
+        if np.all(frame == 0) or np.all(frame == 255):
+            self.logger.warning("Frame appears to be corrupted (all zeros or all 255s)")
+            return self._get_empty_result()
+        
+        # Resize frame with additional validation
         try:
             target_size = tuple(self.config["output_resolution"])
-            if target_size[0] > 0 and target_size[1] > 0:
-                frame = cv2.resize(frame, target_size)
-            else:
+            if target_size[0] <= 0 or target_size[1] <= 0:
                 self.logger.warning(f"Invalid target size: {target_size}")
-                return {
-                    'detections': [],
-                    'tracked_objects': [],
-                    'performance': {
-                        'fps': 0,
-                        'frame_time': 0,
-                        'detection_times': {}
-                    }
-                }
+                return self._get_empty_result()
+            
+            # Additional check before resize
+            if frame.shape[0] <= 0 or frame.shape[1] <= 0:
+                self.logger.warning(f"Invalid frame dimensions for resize: {frame.shape}")
+                return self._get_empty_result()
+            
+            frame = cv2.resize(frame, target_size)
+            
+            # Verify resize was successful
+            if frame is None or frame.size == 0:
+                self.logger.warning("Frame resize resulted in empty frame")
+                return self._get_empty_result()
+                
         except Exception as e:
             self.logger.error(f"Frame resize error: {e}, frame shape: {frame.shape if frame is not None else 'None'}")
-            return {
-                'detections': [],
-                'tracked_objects': [],
-                'performance': {
-                    'fps': 0,
-                    'frame_time': 0,
-                    'detection_times': {}
-                }
-            }
+            return self._get_empty_result()
         
         # Run all detectors
         all_detections = []
