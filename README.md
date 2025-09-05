@@ -72,7 +72,7 @@ Advanced Security System
 - **Use Cases**: Object classification, shape recognition, quality enhancement
 
 ### 2. **Machine Learning Integration**
-- **Deep Learning Models**: YOLO v3 for object detection
+- **Deep Learning Models**: YOLO v8 for object detection
 - **Custom Model Training**: HOG + Logistic Regression pipeline
 - **Model Evaluation**: Comprehensive metrics and comparison
 - **Feature Engineering**: Traditional CV + ML feature extraction
