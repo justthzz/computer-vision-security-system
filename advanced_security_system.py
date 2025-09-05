@@ -242,7 +242,7 @@ class AdvancedSecuritySystem:
         """Process a single frame with all detection methods."""
         start_time = time.time()
         
-        # Comprehensive frame validation
+        # Comprehensive frame validation with early return
         if frame is None:
             self.logger.warning("Frame is None, skipping processing")
             return self._get_empty_result()
@@ -264,8 +264,12 @@ class AdvancedSecuritySystem:
             return self._get_empty_result()
         
         # Check for corrupted frames
-        if np.all(frame == 0) or np.all(frame == 255):
-            self.logger.warning("Frame appears to be corrupted (all zeros or all 255s)")
+        try:
+            if np.all(frame == 0) or np.all(frame == 255):
+                self.logger.warning("Frame appears to be corrupted (all zeros or all 255s)")
+                return self._get_empty_result()
+        except Exception as e:
+            self.logger.warning(f"Error checking frame corruption: {e}")
             return self._get_empty_result()
         
         # Skip resize operation to avoid OpenCV errors
@@ -278,32 +282,45 @@ class AdvancedSecuritySystem:
         
         for name, detector in self.detectors.items():
             if detector.is_initialized:
-                det_start = time.time()
-                detections = detector.detect(frame)
-                det_time = time.time() - det_start
-                
-                detection_times[name] = det_time
-                all_detections.extend(detections)
-                
-                # Log detection results
-                if detections:
-                    self.logger.debug(f"{name} detected {len(detections)} objects")
+                try:
+                    det_start = time.time()
+                    detections = detector.detect(frame)
+                    det_time = time.time() - det_start
+                    
+                    detection_times[name] = det_time
+                    all_detections.extend(detections)
+                    
+                    # Log detection results
+                    if detections:
+                        self.logger.debug(f"{name} detected {len(detections)} objects")
+                except Exception as det_error:
+                    self.logger.warning(f"Error in {name} detector: {det_error}")
+                    detection_times[name] = 0
+                    continue
         
-        # Update object tracking
+        # Update object tracking (temporarily disabled due to OpenCV resize issues)
         if self.tracker:
-            self.tracked_objects = self.tracker.update(frame, all_detections)
-            self.logger.debug(f"Tracking {len(self.tracked_objects)} objects")
+            try:
+                # Skip tracking to avoid OpenCV resize errors
+                self.tracked_objects = []
+                self.logger.debug("Object tracking temporarily disabled due to OpenCV issues")
+            except Exception as track_error:
+                self.logger.warning(f"Error in object tracking: {track_error}")
+                self.tracked_objects = []
         
         # Update analytics
         if self.analytics:
-            for detection in all_detections:
-                self.analytics.add_detection(
-                    detection_type=detection.class_name,
-                    confidence=detection.confidence,
-                    bbox=detection.bbox,
-                    timestamp=detection.timestamp,
-                    method=detection.method
-                )
+            try:
+                for detection in all_detections:
+                    self.analytics.add_detection(
+                        detection_type=detection.class_name,
+                        confidence=detection.confidence,
+                        bbox=detection.bbox,
+                        timestamp=detection.timestamp,
+                        method=detection.method
+                    )
+            except Exception as analytics_error:
+                self.logger.warning(f"Error in analytics: {analytics_error}")
         
         # Calculate performance metrics
         frame_time = time.time() - start_time
